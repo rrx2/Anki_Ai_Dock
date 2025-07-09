@@ -65,8 +65,8 @@ def on_editor_context_menu(editor_webview, menu):
         # if p_val.get("shortcut"): action_text += f" ({p_val['shortcut']})"
 
         prompt_action = QAction(action_text, ai_submenu)
-        prompt_action.triggered.connect(lambda checked=False, tmpl=p_val['template'], txt=selected_text_in_editor, editor_obj=editor:
-                                          _on_copy_text_received(editor_obj, txt, tmpl))
+        prompt_action.triggered.connect(lambda checked=False, tmpl=p_val['template'], txt=selected_text_in_editor, editor_obj=editor_webview.editor:
+                                  _on_copy_text_received(editor_obj, txt, tmpl))
         ai_submenu.addAction(prompt_action)
 
 def on_editor_note_loaded(editor):
