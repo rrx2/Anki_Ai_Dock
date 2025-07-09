@@ -4,16 +4,44 @@ import os
 from aqt import mw
 from aqt.qt import (
     QWidget, QVBoxLayout, QComboBox, QSplitter, QHBoxLayout, QLabel,
-    QDoubleSpinBox, QSizePolicy, QAction, QIcon, QPushButton, QFormLayout
+    QDoubleSpinBox, QSizePolicy, QAction, QIcon, QPushButton, QFormLayout,
+    QFileDialog # Added QFileDialog here
 )
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
+from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PyQt6.QtCore import QUrl, QTimer, Qt
 from aqt.editor import Editor
+from aqt.utils import tooltip, showWarning
 
 from .config import get_config, write_config, RATIO_OPTIONS
 from .logic import on_text_pasted_from_ai, GET_SELECTION_HTML_JS
 from .ui import PromptManagerDialog
+
+# --- Persistent Profile Management ---
+
+_persistent_ai_dock_profile = None
+
+def get_persistent_ai_dock_profile():
+    """Creates and returns a single, persistent QWebEngineProfile for the AI Dock."""
+    global _persistent_ai_dock_profile
+    if _persistent_ai_dock_profile is None:
+        profile_dir = os.path.join(mw.pm.profileFolder(), "ai_dock_cache")
+        if not os.path.exists(profile_dir):
+            os.makedirs(profile_dir)
+        
+        # Create a persistent profile stored in the user's Anki profile folder
+        _persistent_ai_dock_profile = QWebEngineProfile("ai_dock_shared", mw)
+        _persistent_ai_dock_profile.setPersistentStoragePath(profile_dir)
+        _persistent_ai_dock_profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.AllowPersistentCookies)
+        _persistent_ai_dock_profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.DiskHttpCache)
+        
+        # Enable features for better web compatibility
+        settings = _persistent_ai_dock_profile.settings()
+        settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, True)
+
+    return _persistent_ai_dock_profile
+
 
 class CustomWebView(QWebEngineView):
     def __init__(self, paste_callback, get_field_name_callback, is_editor, parent=None): # Added parent
@@ -23,7 +51,7 @@ class CustomWebView(QWebEngineView):
         self.is_editor = is_editor
 
     def contextMenuEvent(self, event):
-        menu = self.page().createStandardContextMenu()
+        menu = self.createStandardContextMenu()
         if self.is_editor and self.page().hasSelection():
             menu.addSeparator()
             field_name = self.get_field_name_callback() # This gets the target field in Anki
@@ -33,7 +61,46 @@ class CustomWebView(QWebEngineView):
                 paste_action = QAction(icon, action_text, menu) # Create QAction
                 paste_action.triggered.connect(self.paste_callback) # Connect its triggered signal
                 menu.addAction(paste_action) # Add QAction to menu
+        
+        # --- New: Save Page HTML action ---
+        menu.addSeparator()
+        save_html_action = QAction("Save Page HTML...", menu)
+        save_html_action.triggered.connect(self.save_page_html)
+        menu.addAction(save_html_action)
+        # --- End New ---
+
         menu.exec(event.globalPos())
+
+    def save_page_html(self):
+        """Gets the current page's HTML and prompts the user to save it."""
+        self.page().runJavaScript("document.documentElement.outerHTML", self._save_html_callback)
+
+    def _save_html_callback(self, html_content):
+        """Callback to save the HTML content to a file."""
+        if not html_content:
+            tooltip("No HTML content to save.")
+            return
+
+        # Default filename and path (e.g., Desktop)
+        default_filename = "ai_dock_page.html"
+        desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        default_filepath = os.path.join(desktop_path, default_filename)
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Page HTML",
+            default_filepath,
+            "HTML Files (*.html);;All Files (*)"
+        )
+
+        if file_path:
+            try:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(html_content)
+                tooltip(f"Page HTML saved to: {file_path}")
+            except Exception as e:
+                tooltip(f"Failed to save HTML: {e}")
+
 
 def inject_ai_dock(target_object):
     if not target_object or hasattr(target_object, "_ai_dock_injected_flag"): return
@@ -105,17 +172,8 @@ def inject_ai_dock(target_object):
     # controls_layout.addStretch() # Removed stretch to keep controls compact
     ai_layout.addWidget(controls_widget)
 
-    # Unique profile name incorporating window and context
-    profile_name = f"ai_dock_{id(parent_window)}_{settings_key}"
-    profile = QWebEngineProfile.defaultProfile() # Try default first
-    if hasattr(QWebEngineProfile, 'clearHttpCache') and hasattr(QWebEngineProfile,'clearAllVisitedLinks'): # Check for methods
-        # Attempt to use a persistent profile if possible, otherwise ephemeral
-        try:
-            persistent_profile = QWebEngineProfile(profile_name, parent_window)
-            profile = persistent_profile
-        except RuntimeError: # Can happen if not allowed (e.g. in some test environments)
-            profile = QWebEngineProfile(parent_window) # Ephemeral
-
+    # Use the new persistent profile manager
+    profile = get_persistent_ai_dock_profile()
     ai_page = QWebEnginePage(profile, ai_panel) # Parent page to panel
 
     def _paste_into_field_callback(): # Renamed to avoid conflict

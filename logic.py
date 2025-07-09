@@ -75,23 +75,85 @@ def update_open_docks_config(): # Renamed from update_open_docks
                       target_instance.ai_dock_webview.load(QUrl(ai_sites.get(last_choice)))
 
 
+def inject_prompt_into_ai_webview(target_object, prompt_text: str):
+    if not target_object or not hasattr(target_object, 'ai_dock_webview'):
+        tooltip("Could not find an active AI Dock.")
+        return
+
+    target_webview = target_object.ai_dock_webview
+
+    # Get the current site name to apply specific logic
+    current_site_name = target_object.ai_dock_site_combobox.currentText()
+
+    js_script = f"""
+    (function(prompt, currentSiteName) {{
+        let success = false;
+
+        if (currentSiteName === "Gemini") {{
+            const targetElement = document.querySelector('rich-textarea[aria-label="Inserisci un prompt qui"]');
+            if (targetElement) {{
+                targetElement.focus();
+                targetElement.innerHTML = prompt;
+                
+                // Dispatch events to try and trigger internal logic
+                targetElement.dispatchEvent(new Event('input', {{ bubbles: true, cancelable: true }}));
+                targetElement.dispatchEvent(new Event('change', {{ bubbles: true, cancelable: true }}));
+                success = true;
+            }}
+        }} else {{
+            // Existing logic for Claude and ChatGPT
+            const selectors = [
+                'div[aria-label="Scrivi il tuo prompt per Claude"]', // Claude
+                '#prompt-textarea',                               // ChatGPT
+                'textarea',                                       // Generic fallback
+            ];
+            let targetElement = null;
+            for (const selector of selectors) {{
+                targetElement = document.querySelector(selector);
+                if (targetElement) break;
+            }}
+
+            if (targetElement) {{
+                if (targetElement.tagName === 'TEXTAREA') {{
+                    targetElement.value = prompt;
+                }} else {{ // Assumes contenteditable div
+                    targetElement.innerHTML = prompt;
+                }}
+                targetElement.dispatchEvent(new Event('input', {{ bubbles: true, cancelable: true }}));
+                targetElement.dispatchEvent(new Event('change', {{ bubbles: true, cancelable: true }}));
+                targetElement.focus();
+                success = true;
+            }}
+        }}
+        return success;
+    }})({json.dumps(prompt_text)}, {json.dumps(current_site_name)});
+    """
+    
+    def on_injection_result(success):
+        if success:
+            tooltip("Prompt injected into AI service.")
+        else:
+            tooltip("Failed to inject prompt. The website's input field might have changed or Shadow DOM is blocking access.")
+
+    target_webview.page().runJavaScript(js_script, on_injection_result)
+
 def on_text_pasted_from_ai(editor: Editor, selected_html: str, target_field_name: str):
     if not editor or not editor.note: return
     if not selected_html: tooltip("No content selected in the AI panel."); return
     field_names = [f['name'] for f in editor.note.model()['flds']]
     try: field_index = field_names.index(target_field_name)
-    except ValueError: showWarning(f"Field '{target_field_name}' not found."); return
+    except ValueError: showWarning(f"Field '{{target_field_name}}' not found."); return
     escaped_html = json.dumps(selected_html)
     js = f"""
-    const field = anki.editor.fields.get({field_index});
+    const field = anki.editor.fields.get({{field_index}});
     if (field) {{
         field.focus();
         const wasEmpty = field.editingArea.innerHTML === "" || field.editingArea.innerHTML === "<br>";
-        anki.editor.pasteHTML(wasEmpty ? {escaped_html} : ("<br>" + {escaped_html}));
+        anki.editor.pasteHTML(wasEmpty ? {{escaped_html}} : ("<br>" + {{escaped_html}}));
         field.save();
     }}"""
-    editor.web.eval(f"(() => {{{js}}})();")
-    tooltip(f"Pasted content into '{target_field_name}'.")
+    editor.web.eval(f"(() => {{{{{js}}}}})();")
+    tooltip(f"Pasted content into '{{target_field_name}}'.")
 
 def trigger_paste_from_ai_webview():
     editor = None
@@ -125,12 +187,14 @@ def on_copy_with_prompt_from_editor(prompt_template: str):
 
     # This JS runs on Anki's main editor webview, not the AI dock's one.
     editor.web.page().runJavaScript("window.getSelection().toString();",
-        lambda text: _on_copy_text_received(text, prompt_template))
+        lambda text: _on_copy_text_received(editor, text, prompt_template))
 
-def _on_copy_text_received(text: str, prompt_template:str):
-    if not text: tooltip("No text selected in editor."); return
-    QApplication.clipboard().setText(prompt_template.format(text=text))
-    tooltip("Formatted prompt copied to clipboard!")
+def _on_copy_text_received(editor, text: str, prompt_template:str):
+    if not text:
+        tooltip("No text selected in editor.")
+        return
+    full_prompt = prompt_template.format(text=text)
+    inject_prompt_into_ai_webview(editor, full_prompt)
 
 
 def toggle_ai_dock_visibility():
