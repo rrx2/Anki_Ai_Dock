@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import json
-from aqt import mw, QApplication
-from aqt.editor import Editor
-from aqt.reviewer import Reviewer
-from aqt.utils import showWarning, tooltip
+
+from aqt import QApplication, mw
 from aqt.addcards import AddCards
 from aqt.browser import Browser
 from aqt.editcurrent import EditCurrent
+from aqt.editor import Editor
 from aqt.qt import QUrl
+from aqt.utils import showWarning, tooltip
 
 from .config import get_config, write_config
 
@@ -270,4 +270,4 @@ def toggle_ai_dock_visibility():
         current_config[settings_key]["visible"] = is_visible
         write_config(current_config)
     else:
-        tooltip(f"AI Dock not found or not applicable to current window/state.")
+        tooltip("AI Dock not found or not applicable to current window/state.")
