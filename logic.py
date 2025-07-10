@@ -88,7 +88,6 @@ def inject_prompt_into_ai_webview(target_object, prompt_text: str):
     js_script = f"""
     (function(prompt, currentSiteName) {{
         let success = false;
-
         if (currentSiteName === "Gemini") {{
             const targetEditor = document.querySelector('div.ql-editor[contenteditable="true"]');
             
@@ -124,7 +123,6 @@ def inject_prompt_into_ai_webview(target_object, prompt_text: str):
                 targetElement = document.querySelector(selector);
                 if (targetElement) break;
             }}
-
             if (targetElement) {{
                 if (targetElement.tagName === 'TEXTAREA') {{
                     targetElement.value = prompt;
@@ -196,6 +194,7 @@ def on_text_pasted_from_ai(editor: Editor, selected_html: str, target_field_name
 
 # --- FUNZIONE AGGIORNATA ---
 def trigger_paste_from_ai_webview():
+<<<<<<< HEAD
     """
     Attiva l'incollamento del contenuto selezionato nel webview del dock AI.
     """
@@ -211,10 +210,35 @@ def trigger_paste_from_ai_webview():
             tooltip("Pasting from AI is typically for editor windows.")
             return
         tooltip("Shortcut can only be used when an editor with AI Dock is active."); return
+=======
+    """Triggers pasting from the AI webview using the dropdown as the target."""
+    target_object = None
+    
+    # First check for active editor windows
+    for win in mw.app.topLevelWidgets():
+        if hasattr(win, 'editor') and win.editor and win.isActiveWindow():
+            if hasattr(win.editor, 'ai_dock_webview'):
+                target_object = win.editor
+                break
+    
+    # If no editor found, check if we're in review mode
+    if not target_object and mw.state == "review" and hasattr(mw, 'reviewer') and mw.reviewer:
+        if hasattr(mw.reviewer, 'ai_dock_webview'):
+            target_object = mw.reviewer
+    
+    if not target_object:
+        tooltip("Shortcut can only be used when an editor or reviewer with AI Dock is active.")
+        return
+>>>>>>> refactor-init
 
-    field_name = editor.ai_dock_field_combobox.currentText()
-    if not field_name: showWarning("Please select a target field."); return
+    # For reviewer, we can't paste to fields, so just show the selected content from AI panel
+    if target_object == mw.reviewer:
+        print(f"DEBUG: Trying to get selection from AI webview in reviewer")
+        target_object.ai_dock_webview.page().runJavaScript(GET_SELECTION_HTML_JS,
+            lambda html: tooltip(f"AI Panel content: {html[:100]}...") if html else tooltip("No content selected in AI panel."))
+        return
 
+<<<<<<< HEAD
     # Use the AI dock's webview to get selected HTML
     editor.ai_dock_webview.page().runJavaScript(GET_SELECTION_HTML_JS,
         lambda html: on_text_pasted_from_ai(editor, html, field_name))
@@ -224,12 +248,48 @@ def on_copy_with_prompt_from_editor(prompt_template: str):
     Copia il testo selezionato dall'editor e lo combina con un template di prompt.
     """
     editor = None
+=======
+    # For editor, use the field dropdown to paste content from AI panel
+    field_name = target_object.ai_dock_field_combobox.currentText()
+    if not field_name:
+        showWarning("Please select a target field in the top bar.")
+        return
+
+    target_object.ai_dock_webview.page().runJavaScript(GET_SELECTION_HTML_JS,
+        lambda html: on_text_pasted_from_ai(target_object, html, field_name))
+
+def on_copy_with_prompt_from_editor(prompt_template: str):
+    """Copies selected text from the Anki editor or reviewer and injects it into the AI service."""
+    target_object = None
+    webview = None
+    
+    # Debug: mostra lo stato di Anki
+    print(f"DEBUG: mw.state = {mw.state}")
+    print(f"DEBUG: hasattr(mw, 'reviewer') = {hasattr(mw, 'reviewer')}")
+    if hasattr(mw, 'reviewer'):
+        print(f"DEBUG: mw.reviewer = {mw.reviewer}")
+    
+    # First check for active editor windows
+>>>>>>> refactor-init
     for win in mw.app.topLevelWidgets():
         if hasattr(win, 'editor') and win.editor and win.isActiveWindow():
-            editor = win.editor
+            target_object = win.editor
+            webview = target_object.web
+            print(f"DEBUG: Found editor window: {target_object}")
             break
-    if not editor: tooltip("Shortcut can only be used in an editor window."); return
+    
+    # If no editor found, check if we're in review mode
+    if not target_object and mw.state == "review" and hasattr(mw, 'reviewer') and mw.reviewer:
+        target_object = mw.reviewer
+        webview = mw.reviewer.web
+        print(f"DEBUG: Found reviewer: {target_object}")
+    
+    if not target_object:
+        print(f"DEBUG: No target object found")
+        tooltip("Shortcut can only be used in an editor or review window.")
+        return
 
+<<<<<<< HEAD
     editor.web.page().runJavaScript("window.getSelection().toString();",
         lambda text: _on_copy_text_received(editor, text, prompt_template))
 
@@ -239,35 +299,61 @@ def _on_copy_text_received(editor, text: str, prompt_template:str):
     """
     if not text:
         tooltip("No text selected in editor.")
+=======
+    if not webview:
+        print(f"DEBUG: No webview found")
+        tooltip("Could not find web content to extract text from.")
+        return
+
+    print(f"DEBUG: Using webview: {webview}")
+    print(f"DEBUG: About to get text selection from webview")
+    webview.page().runJavaScript("window.getSelection().toString();",
+        lambda text: _on_copy_text_received(target_object, text, prompt_template))
+
+def _on_copy_text_received(target_object, text: str, prompt_template:str):
+    """Callback that formats the prompt and injects it."""
+    print(f"DEBUG: _on_copy_text_received called with text: '{text[:50]}...' (length: {len(text)})")
+    if not text.strip():
+        tooltip("No text selected.")
+>>>>>>> refactor-init
         return
     full_prompt = prompt_template.format(text=text)
-    inject_prompt_into_ai_webview(editor, full_prompt)
-
+    print(f"DEBUG: Formatted prompt: '{full_prompt[:50]}...'")
+    inject_prompt_into_ai_webview(target_object, full_prompt)
 
 def toggle_ai_dock_visibility():
+<<<<<<< HEAD
     """
     Mostra o nasconde il pannello del dock AI nella finestra attiva.
     """
+=======
+    """Shows or hides the AI dock panel in the currently active window."""
+>>>>>>> refactor-init
     target = None
     active_win = QApplication.activeWindow()
     if hasattr(active_win, 'editor') and active_win.editor:
         target = active_win.editor
     elif mw.state == "review" and hasattr(mw, 'reviewer'):
         target = mw.reviewer
+<<<<<<< HEAD
     else:
         for win in mw.app.topLevelWidgets():
             if isinstance(win, (AddCards, Browser, EditCurrent)) and hasattr(win, 'editor') and win.editor:
                 target = win.editor
                 break
 
+=======
+    
+>>>>>>> refactor-init
     if target and hasattr(target, 'ai_dock_panel'):
         panel = target.ai_dock_panel
         is_visible = not panel.isVisible()
         panel.setVisible(is_visible)
-
-        current_config = get_config()
-        settings_key = "editor_settings" if isinstance(target, Editor) else "reviewer_settings"
-        current_config[settings_key]["visible"] = is_visible
-        write_config(current_config)
+        
+        # Save visibility state to config
+        is_editor = isinstance(target, Editor)
+        settings_key = "editor_settings" if is_editor else "reviewer_settings"
+        get_config()[settings_key]["visible"] = is_visible
+        write_config() # MODIFICA: Salvataggio immediato
     else:
-        tooltip(f"AI Dock not found or not applicable to current window/state.")
+        tooltip("AI Dock not found in the current window.")
