@@ -228,7 +228,7 @@ class PromptManagerDialog(QDialog):
         config['toggle_dock_shortcut'] = self.toggle_dock_edit.keySequence().toString(QKeySequence.SequenceFormat.PortableText)
         
         # Now, write the single, authoritative config object to disk
-        write_config()
+        write_config(config)
         
         # Re-apply shortcuts and update any open docks with the saved changes
         setup_shortcuts()

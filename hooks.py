@@ -38,6 +38,45 @@ def on_editor_context_menu(editor_webview, menu):
         )
         ai_submenu.addAction(prompt_action)
 
+def on_reviewer_context_menu(reviewer_webview, menu):
+    """Adds the 'AI Dock Prompts' context menu to the reviewer."""
+    selected_text_in_reviewer = reviewer_webview.page().selectedText().strip()
+    if not selected_text_in_reviewer:
+        return
+
+    prompts = get_config().get("prompts", [])
+    if not prompts:
+        return
+
+    ai_icon = QIcon(os.path.join(os.path.dirname(__file__), "icons", "ai_icon.png"))
+    ai_submenu = menu.addMenu(ai_icon, "AI Dock Prompts")
+
+    for p_val in prompts:
+        action_text = p_val["name"]
+        prompt_action = QAction(action_text, ai_submenu)
+        prompt_action.triggered.connect(
+            lambda checked=False, tmpl=p_val['template'], txt=selected_text_in_reviewer, reviewer_obj=mw.reviewer:
+            _on_copy_text_received(reviewer_obj, txt, tmpl)
+        )
+        ai_submenu.addAction(prompt_action)
+
+def on_webview_context_menu(webview, menu):
+    """Universal context menu handler for both editor and reviewer."""
+    print(f"DEBUG: on_webview_context_menu called with webview: {webview}")
+    print(f"DEBUG: mw.state = {mw.state}")
+    print(f"DEBUG: hasattr(mw, 'reviewer') = {hasattr(mw, 'reviewer')}")
+    if hasattr(mw, 'reviewer'):
+        print(f"DEBUG: mw.reviewer = {mw.reviewer}")
+        print(f"DEBUG: mw.reviewer.web = {mw.reviewer.web if mw.reviewer else None}")
+        print(f"DEBUG: webview == mw.reviewer.web = {mw.reviewer.web == webview if mw.reviewer else False}")
+    
+    # Controlla se siamo nel reviewer
+    if mw.state == "review" and hasattr(mw, 'reviewer') and mw.reviewer and mw.reviewer.web == webview:
+        print(f"DEBUG: Calling on_reviewer_context_menu")
+        on_reviewer_context_menu(webview, menu)
+    else:
+        print(f"DEBUG: Not calling reviewer context menu")
+
 def on_editor_note_loaded(editor):
     """Updates the target field dropdown when a note is loaded."""
     if not hasattr(editor, 'ai_dock_field_combobox') or not editor.note:
@@ -74,11 +113,33 @@ def on_profile_will_close():
 
 def register_hooks():
     """Registers all necessary hooks for the add-on."""
+    print("DEBUG: register_hooks() called")
+    
     gui_hooks.editor_did_init.append(on_editor_did_init)
+    print("DEBUG: editor_did_init hook registered")
+    
     gui_hooks.editor_did_load_note.append(on_editor_note_loaded)
+    print("DEBUG: editor_did_load_note hook registered")
+    
     gui_hooks.reviewer_did_show_question.append(on_reviewer_did_show)
+    print("DEBUG: reviewer_did_show_question hook registered")
+    
     gui_hooks.editor_will_show_context_menu.append(on_editor_context_menu)
+    print("DEBUG: editor_will_show_context_menu hook registered")
+    
+    # Try to register reviewer context menu hook if it exists
+    print(f"DEBUG: Checking for reviewer_will_show_context_menu: {hasattr(gui_hooks, 'reviewer_will_show_context_menu')}")
+    if hasattr(gui_hooks, 'reviewer_will_show_context_menu'):
+        gui_hooks.reviewer_will_show_context_menu.append(on_reviewer_context_menu)
+        print("DEBUG: reviewer_will_show_context_menu hook registered")
+    
+    # SEMPRE registriamo anche webview_will_show_context_menu come fallback
+    gui_hooks.webview_will_show_context_menu.append(on_webview_context_menu)
+    print("DEBUG: webview_will_show_context_menu hook registered (always)")
+    
     gui_hooks.profile_will_close.append(on_profile_will_close)
+    print("DEBUG: profile_will_close hook registered")
     
     # Setup shortcuts after Anki has started up.
+    print("DEBUG: Setting up shortcuts in 1000ms...")
     QTimer.singleShot(1000, setup_shortcuts)
