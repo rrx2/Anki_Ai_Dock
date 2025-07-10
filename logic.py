@@ -6,7 +6,8 @@ from aqt import QApplication, mw
 from aqt.editor import Editor
 from aqt.utils import showWarning, tooltip
 
-from .config import get_config
+# MODIFICA: Aggiunto 'write_config' per il salvataggio immediato
+from .config import get_config, write_config
 
 # --- JS Snippet for getting selection as HTML ---
 GET_SELECTION_HTML_JS = """
@@ -187,5 +188,6 @@ def toggle_ai_dock_visibility():
         is_editor = isinstance(target, Editor)
         settings_key = "editor_settings" if is_editor else "reviewer_settings"
         get_config()[settings_key]["visible"] = is_visible
+        write_config() # MODIFICA: Salvataggio immediato
     else:
         tooltip("AI Dock not found in the current window.")

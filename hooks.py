@@ -70,8 +70,7 @@ def on_reviewer_did_show(card: Card):
 
 def on_profile_will_close():
     """Saves the final configuration state when Anki is about to close."""
-    config = get_config()
-    write_config(config)
+    write_config()
 
 def register_hooks():
     """Registers all necessary hooks for the add-on."""

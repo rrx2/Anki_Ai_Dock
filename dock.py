@@ -22,7 +22,8 @@ from PyQt6.QtCore import Qt, QTimer, QUrl
 from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
-from .config import RATIO_OPTIONS, get_config
+# MODIFICA: Aggiunto 'write_config' per il salvataggio immediato
+from .config import RATIO_OPTIONS, get_config, write_config
 from .logic import GET_SELECTION_HTML_JS, on_text_pasted_from_ai
 from .ui import PromptManagerDialog
 
@@ -58,35 +59,25 @@ class CustomWebView(QWebEngineView):
     def contextMenuEvent(self, event):
         menu = self.createStandardContextMenu()
 
-        # Check if we are in an editor, a note is loaded, and text is selected in the webview
         if self.is_editor and self.target_object.note and self.page().hasSelection():
             menu.addSeparator()
-
-            # Create the "Paste to Field" submenu
             paste_icon = QIcon.fromTheme("edit-paste", QIcon(os.path.join(os.path.dirname(__file__), "icons", "paste.png")))
             paste_menu = menu.addMenu(paste_icon, "Paste to Field")
-
-            # Get field names from the current note's model
             try:
                 field_names = [f['name'] for f in self.target_object.note.model()['flds']]
             except Exception:
                 field_names = []
 
             if not field_names:
-                # Disable the menu if no fields are found
                 paste_menu.setEnabled(False)
             else:
-                # Create a menu action for each field
                 for field_name in field_names:
                     action = QAction(field_name, paste_menu)
-                    # Connect the action's trigger to our paste handler
-                    # Use a lambda to capture the current field_name for the handler
                     action.triggered.connect(
                         lambda checked=False, fn=field_name: self.trigger_paste_to_field(fn)
                     )
                     paste_menu.addAction(action)
         
-        # --- Save Page HTML action (keep this) ---
         menu.addSeparator()
         save_html_action = QAction("Save Page HTML...", menu)
         save_html_action.triggered.connect(self.save_page_html)
@@ -96,16 +87,12 @@ class CustomWebView(QWebEngineView):
 
     def trigger_paste_to_field(self, field_name: str):
         """Gets the selected HTML from the webview and calls the main paste logic."""
-        
-        # Define the callback that will receive the HTML
         def paste_handler(html: str):
             if not html:
                 tooltip("No content selected to paste.")
                 return
-            # Call the paste function from logic.py
             on_text_pasted_from_ai(self.target_object, html, field_name)
 
-        # Execute the JavaScript to get the selected content as HTML
         self.page().runJavaScript(GET_SELECTION_HTML_JS, paste_handler)
 
     def save_page_html(self):
@@ -183,7 +170,6 @@ def inject_ai_dock(target_object):
     profile = get_persistent_ai_dock_profile()
     ai_page = QWebEnginePage(profile, ai_panel)
 
-    # --- NEW: Simplified CustomWebView instantiation ---
     ai_dock_webview = CustomWebView(target_object=target_object, parent=ai_panel)
     ai_dock_webview.setPage(ai_page)
     ai_dock_webview.setZoomFactor(zoom_spinbox.value())
@@ -197,7 +183,6 @@ def inject_ai_dock(target_object):
     target_object.ai_dock_site_combobox = site_combo_box
     target_object.ai_dock_panel = ai_panel
 
-    # --- Splitter Injection Logic ---
     container_of_anki_webview = anki_webview.parentWidget()
     if not container_of_anki_webview: return
     parent_layout = container_of_anki_webview.layout()
@@ -246,6 +231,7 @@ def inject_ai_dock(target_object):
             if current_location in ["left", "above"]: sizes.reverse()
             splitter.setSizes(sizes)
             get_config()[settings_key]['splitRatio'] = ratio_str
+            write_config() # MODIFICA: Salvataggio immediato
         except (ValueError, Exception):
             splitter.setSizes([1, 1])
 
@@ -253,19 +239,23 @@ def inject_ai_dock(target_object):
         url = get_config().get("ai_sites", {}).get(ai_name)
         if url: ai_dock_webview.load(QUrl(url))
         get_config()['last_choice'] = ai_name
+        write_config() # MODIFICA: Salvataggio immediato
 
     def update_zoom_factor_handler(value):
         ai_dock_webview.setZoomFactor(value)
         get_config()[settings_key]['zoom_factor'] = value
+        write_config() # MODIFICA: Salvataggio immediato
 
     def update_dock_location_handler(new_loc_str):
         nonlocal current_location
         current_location = new_loc_str
         get_config()[settings_key]['location'] = new_loc_str
+        write_config() # MODIFICA: Salvataggio immediato
         tooltip("Dock location will update when you reopen this window.", parent=parent_window)
 
     def save_target_field_name_handler(field_text):
         get_config()['target_field'] = field_text
+        write_config() # MODIFICA: Salvataggio immediato
 
     # Connect signals
     site_combo_box.currentTextChanged.connect(on_ai_site_changed_handler)
