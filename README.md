@@ -1,60 +1,43 @@
 # Anki AI Dock
 
-[![AnkiWeb](https://img.shields.io/badge/AnkiWeb-Coming%20Soon-blue.svg)](https://ankiweb.net/shared/info/) 
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[](https://ankiweb.net/shared/info/)
+[](https://www.google.com/search?q=LICENSE)
 
-A powerful Anki addon that integrates your favorite artificial intelligence services directly into the editor and reviewer, transforming the way you create and study your flashcards. Leverage the power of AI to generate content, translate, summarize, and much more, without ever leaving Anki!
+Tired of switching between Anki and your favorite AI? Anki AI Dock brings services like ChatGPT, Gemini, and Claude directly into your study workflow.
 
-## ✨ Key Features
+This addon embeds a handy web panel right into Anki's editor and reviewer, letting you generate, translate, or explain content for your flashcards without ever leaving the app. Speed up your card creation and supercharge your learning.
 
-*   **Seamless AI Integration:** Open a dockable webview panel within Anki's editor and reviewer, with direct access to services like Gemini, ChatGPT, Perplexity, Claude, and other customizable AI sites.
-*   **Customizable Prompts:** Define your own custom prompts with placeholders (`{text}`) to quickly send selected text from Anki to the AI.
-*   **Smart Paste:** Paste AI responses directly into any field of your Anki note with a simple click or shortcut.
-*   **Flexible Layout:** Customize the position (right, left, above, below) and size ratio of the AI dock to fit your workflow.
-*   **Integrated Zoom:** Adjust the zoom of the AI webview for optimal readability.
-*   **Global Shortcuts:** Assign custom keyboard shortcuts to:
-    *   Paste AI output into the desired field.
-    *   Show/hide the AI dock.
-    *   Activate your custom prompts with selected text.
-*   **Persistent Configuration:** All your settings, prompts, and favorite AI sites are saved persistently.
-*   **Context Menus:** Quickly access your custom AI prompts directly from the editor and reviewer context menus.
+## 📸 Screenshots
+<img width="1054" height="746" alt="Screenshot 2025-07-11 at 00 26 27" src="https://github.com/user-attachments/assets/954c06f3-9484-45e6-b861-113a41b5974f" />
+<img width="1054" height="746" alt="Screenshot 2025-07-11 at 00 27 05" src="https://github.com/user-attachments/assets/fae07421-b8dc-4950-84e9-99b791558eb8" />
 
-## 🚀 How to Use
 
-1.  **Open the Editor or Reviewer:** The AI Dock will automatically appear as a side or bottom panel.
-2.  **Select Your AI Service:** Use the dropdown menu at the top to choose the AI service you want to use (e.g., Gemini, ChatGPT).
-3.  **Send Text to AI:**
-    *   Select text in a field of your Anki note.
-    *   Right-click and choose "AI Dock Prompts" to select one of your custom prompts.
-    *   The selected text will be sent to the AI webview, formatted with the chosen prompt.
-4.  **Paste from AI to Anki:**
-    *   Select the desired text or HTML within the AI panel.
-    *   Right-click on the AI panel and choose "Paste to Field", then select the destination field.
-    *   Alternatively, use the global shortcut "Paste from AI into Field" (configurable in settings).
+## ✨ Features
+
+  * **AI at Your Fingertips**: Embed any AI service (ChatGPT, Gemini, Perplexity, etc.) in a dockable panel. If it has a URL, you can add it.
+  * **Powerful Custom Prompts**: Create reusable prompts like "Explain `{text}` simply" to instantly query the AI with selected text from your notes.
+  * **Effortless Paste**: Send the AI's response directly into any note field with a single click or a keyboard shortcut. No more manual copy-pasting\!
+  * **Customizable Workspace**: Place the dock wherever you want (right, left, top, or bottom) and set up global shortcuts for your most common actions.
+
+## 🚀 How It Works
+
+1.  **Select Text**: Highlight any text in an Anki field.
+2.  **Send to AI**: Right-click (or use a shortcut) and choose one of your custom prompts. The addon will send your text to the AI.
+3.  **Paste Response**: Once the AI responds, select the text in the dock and use the "Paste to Field" command to send it straight into your note.
 
 ## ⚙️ Configuration
 
-Access AI Dock settings via `Tools > AI Dock Settings` in Anki's main menu. Here you can:
+You can customize everything from Anki's main menu: `Tools > AI Dock Settings`.
 
-*   **Custom Prompts:** Add, edit, or remove your custom prompts. Remember to include `{text}` in the prompt template.
-*   **AI Services:** Manage the list of available AI services, adding new URLs or modifying existing ones.
-*   **Global Shortcuts:** Assign or modify keyboard shortcuts for the addon's main actions.
+From there, you can:
+
+  * **Manage Prompts**: Add, edit, or remove your custom prompts.
+  * **Add AI Services**: Add new AI websites or modify the default list.
+  * **Set Shortcuts**: Configure your keyboard shortcuts for maximum speed.
 
 ## 📦 Installation
 
-1.  **Download the addon:** Coming soon on AnkiWeb. For now, you can clone this repository.
-2.  **Open Anki:** Go to `Tools > Add-ons > Open Add-on Folder`.
-3.  **Copy the folder:** Copy the `Anki_Ai_Dock_refactor-init` folder (or the name of the downloaded addon folder) into Anki's add-on folder.
-4.  **Restart Anki:** The addon will be active upon restart.
-
-## 📸 Screenshots
-
-*(Add appealing screenshots of the addon in action in the editor and reviewer, showing the different features and the AI panel here.)*
-
-## 🤝 Contributions
-
-Contributions are welcome! If you have ideas for new features, bug reports, or improvements, feel free to open an issue or a pull request.
-
-## 📄 License
-
-This project is released under the MIT License. See the [LICENSE](LICENSE) file for more details.
+1.  The addon is coming soon to AnkiWeb. For now, download the code from this repository.
+2.  In Anki, go to `Tools > Add-ons > Open Add-ons Folder`.
+3.  Copy the `Anki_Ai_Dock` folder into the `addons` folder.
+4.  Restart Anki.
