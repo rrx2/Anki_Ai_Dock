@@ -8,9 +8,10 @@ Tired of switching between Anki and your favorite AI? Anki AI Dock brings servic
 This addon embeds a handy web panel right into Anki's editor and reviewer, letting you generate, translate, or explain content for your flashcards without ever leaving the app. Speed up your card creation and supercharge your learning.
 
 ## 📸 Screenshots
-<img width="527" height="373" alt="Screenshot 2025-07-11 at 00 26 27" src="https://github.com/user-attachments/assets/954c06f3-9484-45e6-b861-113a41b5974f" />
-<img width="527" height="373" alt="Screenshot 2025-07-11 at 00 27 05" src="https://github.com/user-attachments/assets/fae07421-b8dc-4950-84e9-99b791558eb8" />
-
+<div style="display: flex; justify-content: center; gap: 10px;">
+  <img width="527" height="373" alt="Screenshot 2025-07-11 at 00 26 27" src="https://github.com/user-attachments/assets/954c06f3-9484-45e6-b861-113a41b5974f" style="margin: 0;"/>
+  <img width="527" height="373" alt="Screenshot 2025-07-11 at 00 27 05" src="https://github.com/user-attachments/assets/fae07421-b8dc-4950-84e9-99b791558eb8" style="margin: 0;"/>
+</div>
 
 ## ✨ Features
 
