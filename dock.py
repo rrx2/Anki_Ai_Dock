@@ -47,34 +47,73 @@ def get_persistent_ai_dock_profile():
     return _persistent_ai_dock_profile
 
 class CustomWebView(QWebEngineView):
-    def __init__(self, paste_callback, get_field_name_callback, is_editor, parent=None):
+    """
+    A custom QWebEngineView that handles the context menu for pasting into specific fields.
+    """
+    def __init__(self, target_object, parent=None):
         super().__init__(parent)
-        self.paste_callback = paste_callback
-        self.get_field_name_callback = get_field_name_callback
-        self.is_editor = is_editor
+        self.target_object = target_object
+        self.is_editor = isinstance(self.target_object, Editor)
 
     def contextMenuEvent(self, event):
         menu = self.createStandardContextMenu()
-        if self.is_editor and self.page().hasSelection():
+
+        # Check if we are in an editor, a note is loaded, and text is selected in the webview
+        if self.is_editor and self.target_object.note and self.page().hasSelection():
             menu.addSeparator()
-            field_name = self.get_field_name_callback()
-            if field_name:
-                action_text = f"Paste to Anki field '{field_name}'"
-                icon = QIcon.fromTheme("edit-paste", QIcon(os.path.join(os.path.dirname(__file__), "icons", "paste.png")))
-                paste_action = QAction(icon, action_text, menu)
-                paste_action.triggered.connect(self.paste_callback)
-                menu.addAction(paste_action)
+
+            # Create the "Paste to Field" submenu
+            paste_icon = QIcon.fromTheme("edit-paste", QIcon(os.path.join(os.path.dirname(__file__), "icons", "paste.png")))
+            paste_menu = menu.addMenu(paste_icon, "Paste to Field")
+
+            # Get field names from the current note's model
+            try:
+                field_names = [f['name'] for f in self.target_object.note.model()['flds']]
+            except Exception:
+                field_names = []
+
+            if not field_names:
+                # Disable the menu if no fields are found
+                paste_menu.setEnabled(False)
+            else:
+                # Create a menu action for each field
+                for field_name in field_names:
+                    action = QAction(field_name, paste_menu)
+                    # Connect the action's trigger to our paste handler
+                    # Use a lambda to capture the current field_name for the handler
+                    action.triggered.connect(
+                        lambda checked=False, fn=field_name: self.trigger_paste_to_field(fn)
+                    )
+                    paste_menu.addAction(action)
         
+        # --- Save Page HTML action (keep this) ---
         menu.addSeparator()
         save_html_action = QAction("Save Page HTML...", menu)
         save_html_action.triggered.connect(self.save_page_html)
         menu.addAction(save_html_action)
+
         menu.exec(event.globalPos())
 
+    def trigger_paste_to_field(self, field_name: str):
+        """Gets the selected HTML from the webview and calls the main paste logic."""
+        
+        # Define the callback that will receive the HTML
+        def paste_handler(html: str):
+            if not html:
+                tooltip("No content selected to paste.")
+                return
+            # Call the paste function from logic.py
+            on_text_pasted_from_ai(self.target_object, html, field_name)
+
+        # Execute the JavaScript to get the selected content as HTML
+        self.page().runJavaScript(GET_SELECTION_HTML_JS, paste_handler)
+
     def save_page_html(self):
+        """Gets the current page's HTML and prompts the user to save it."""
         self.page().runJavaScript("document.documentElement.outerHTML", self._save_html_callback)
 
     def _save_html_callback(self, html_content):
+        """Callback to save the HTML content to a file."""
         if not html_content:
             tooltip("No HTML content to save.")
             return
@@ -120,7 +159,6 @@ def inject_ai_dock(target_object):
     zoom_spinbox.setValue(float(context_settings.get("zoom_factor", 1.0)))
     controls_layout.addWidget(zoom_spinbox)
     
-    # ... (rest of the control setup is similar)
     ratio_combobox = QComboBox(controls_widget)
     ratio_combobox.addItems(RATIO_OPTIONS)
     ratio_combobox.setCurrentText(context_settings.get("splitRatio", "1:1"))
@@ -145,18 +183,8 @@ def inject_ai_dock(target_object):
     profile = get_persistent_ai_dock_profile()
     ai_page = QWebEnginePage(profile, ai_panel)
 
-    def _paste_into_field_callback():
-        if not is_editor: return
-        target_field_name = field_name_combobox.currentText()
-        if not target_field_name:
-            showWarning("Please select a target Anki field.", parent=parent_window)
-            return
-        target_object.ai_dock_webview.page().runJavaScript(GET_SELECTION_HTML_JS,
-            lambda html: on_text_pasted_from_ai(target_object, html, target_field_name))
-
-    ai_dock_webview = CustomWebView(_paste_into_field_callback,
-                                 lambda: field_name_combobox.currentText() if is_editor else "",
-                                 is_editor=is_editor, parent=ai_panel)
+    # --- NEW: Simplified CustomWebView instantiation ---
+    ai_dock_webview = CustomWebView(target_object=target_object, parent=ai_panel)
     ai_dock_webview.setPage(ai_page)
     ai_dock_webview.setZoomFactor(zoom_spinbox.value())
     ai_layout.addWidget(ai_dock_webview, 1)
@@ -177,15 +205,15 @@ def inject_ai_dock(target_object):
     if parent_layout and parent_layout.indexOf(anki_webview) != -1:
         web_index = parent_layout.indexOf(anki_webview)
         parent_layout.removeWidget(anki_webview)
-    else: # Fallback for more complex layouts
+    else: 
         grandparent = container_of_anki_webview.parentWidget()
         if grandparent and grandparent.layout():
             parent_layout = grandparent.layout()
             web_index = parent_layout.indexOf(container_of_anki_webview)
             if web_index != -1:
                 parent_layout.removeWidget(container_of_anki_webview)
-            else: return # Cannot inject
-        else: return # Cannot inject
+            else: return 
+        else: return 
     
     main_view_wrapper = QWidget(parent_window)
     main_view_wrapper_layout = QHBoxLayout(main_view_wrapper)
@@ -217,27 +245,27 @@ def inject_ai_dock(target_object):
             sizes = [s1, s2]
             if current_location in ["left", "above"]: sizes.reverse()
             splitter.setSizes(sizes)
-            get_config()[settings_key]['splitRatio'] = ratio_str # Modify in-memory config
+            get_config()[settings_key]['splitRatio'] = ratio_str
         except (ValueError, Exception):
             splitter.setSizes([1, 1])
 
     def on_ai_site_changed_handler(ai_name):
         url = get_config().get("ai_sites", {}).get(ai_name)
         if url: ai_dock_webview.load(QUrl(url))
-        get_config()['last_choice'] = ai_name # Modify in-memory config
+        get_config()['last_choice'] = ai_name
 
     def update_zoom_factor_handler(value):
         ai_dock_webview.setZoomFactor(value)
-        get_config()[settings_key]['zoom_factor'] = value # Modify in-memory config
+        get_config()[settings_key]['zoom_factor'] = value
 
     def update_dock_location_handler(new_loc_str):
         nonlocal current_location
         current_location = new_loc_str
-        get_config()[settings_key]['location'] = new_loc_str # Modify in-memory config
+        get_config()[settings_key]['location'] = new_loc_str
         tooltip("Dock location will update when you reopen this window.", parent=parent_window)
 
     def save_target_field_name_handler(field_text):
-        get_config()['target_field'] = field_text # Modify in-memory config
+        get_config()['target_field'] = field_text
 
     # Connect signals
     site_combo_box.currentTextChanged.connect(on_ai_site_changed_handler)
