@@ -10,7 +10,10 @@ This addon embeds a handy web panel right into Anki's editor and reviewer, letti
 ## 📸 Screenshots
 <div style="display: flex; justify-content: center; gap: 10px;">
   <img width="527" height="373" alt="Screenshot 2025-07-11 at 00 26 27" src="https://github.com/user-attachments/assets/954c06f3-9484-45e6-b861-113a41b5974f" style="margin: 0;"/>
+  <img width="527" height="373" alt="Screenshot 2025-07-11 at 00 26 46" src="https://github.com/user-attachments/assets/7a4ac604-7bf1-4d9b-a790-b63038a4cbac" />
+<img width="527" height="373" alt="Screenshot 2025-07-11 at 00 40 33" src="https://github.com/user-attachments/assets/99e2d9a6-0cd2-44d4-9fe3-069d46dc5889" />
   <img width="527" height="373" alt="Screenshot 2025-07-11 at 00 27 05" src="https://github.com/user-attachments/assets/fae07421-b8dc-4950-84e9-99b791558eb8" style="margin: 0;"/>
+  
 </div>
 
 ## ✨ Features
