@@ -1,0 +1,9 @@
+
+# Ignore personal files
+user_files/
+
+# Ignore cache
+__pycache__/
+
+# Ignore .DS_Store
+.DS_Store
