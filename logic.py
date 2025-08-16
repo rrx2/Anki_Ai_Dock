@@ -111,10 +111,9 @@ def inject_prompt_into_ai_webview(target_object, prompt_text: str):
     """
     target_webview.page().runJavaScript(js_script)
 
-def on_text_pasted_from_ai(editor: Editor, selected_html: str, target_field_name: str):
+def on_text_pasted_from_ai(editor: Editor, selected_html: str, target_field_names: list[str]):
     """
-    Pastes the given HTML into the specified field of the current note.
-    This version correctly handles both new notes and existing notes.
+    Pastes the given HTML into the specified list of fields of the current note.
     """
     if not editor or not editor.note:
         showWarning("No note is currently loaded in the editor.")
@@ -124,41 +123,58 @@ def on_text_pasted_from_ai(editor: Editor, selected_html: str, target_field_name
         tooltip("No content selected in the AI panel.")
         return
 
-    note = editor.note
-    field_names = [f['name'] for f in note.model()['flds']]
-    
-    try:
-        field_index = field_names.index(target_field_name)
-    except ValueError:
-        showWarning(f"Field '{target_field_name}' not found in this note type.")
+    if not target_field_names:
+        tooltip("No target fields selected.")
         return
 
-    current_content = note.fields[field_index]
-    if current_content and not current_content.isspace():
-        note.fields[field_index] += "<br>" + selected_html
-    else:
-        note.fields[field_index] = selected_html
+    note = editor.note
+    model_field_names = [f['name'] for f in note.model()['flds']]
+    updated_fields = 0
 
-    if not note.id:
-        editor.loadNote()
-    else:
-        mw.checkpoint("Paste from AI")
-        note.flush()
-        editor.loadNote(focusTo=field_index)
-        mw.progress.finish()
-    tooltip(f"Pasted content into '{target_field_name}'.")
+    for field_name in target_field_names:
+        try:
+            field_index = model_field_names.index(field_name)
+            current_content = note.fields[field_index]
+            if current_content and not current_content.isspace():
+                note.fields[field_index] += "<br>" + selected_html
+            else:
+                note.fields[field_index] = selected_html
+            updated_fields += 1
+        except ValueError:
+            print(f"Field '{field_name}' not found in this note type, skipping.")
+
+    if updated_fields > 0:
+        if not note.id:
+            editor.loadNote()
+        else:
+            mw.checkpoint("Paste from AI")
+            note.flush()
+            editor.loadNote()
+            mw.progress.finish()
+        
+        if updated_fields == 1:
+            tooltip(f"Pasted content into '{target_field_names[0]}'.")
+        else:
+            tooltip(f"Pasted content into {updated_fields} fields.")
 
 def trigger_paste_from_ai_webview():
+    print("DEBUG: trigger_paste_from_ai_webview called")
     """Triggers pasting from the AI webview using the dropdown as the target."""
     target_object = None
     
-    # First check for active editor windows
-    for win in mw.app.topLevelWidgets():
-        if hasattr(win, 'editor') and win.editor and win.isActiveWindow():
-            if hasattr(win.editor, 'ai_dock_webview'):
+    # Try to find the editor window more reliably
+    if mw.state == 'editCurrent' and isinstance(mw.app.activeWindow(), Editor):
+        target_object = mw.app.activeWindow()
+    elif mw.state == 'add' and isinstance(mw.app.activeWindow(), AddCards):
+        target_object = mw.app.activeWindow().editor
+    else:
+        # Fallback for other cases, like the browser
+        for win in mw.app.topLevelWidgets():
+            if hasattr(win, 'editor') and win.editor and hasattr(win.editor, 'ai_dock_webview'):
                 target_object = win.editor
                 break
-    
+    print(f"DEBUG: target_object = {target_object}")
+
     # If no editor found, check if we're in review mode
     if not target_object and mw.state == "review" and hasattr(mw, 'reviewer') and mw.reviewer:
         if hasattr(mw.reviewer, 'ai_dock_webview'):
@@ -176,13 +192,17 @@ def trigger_paste_from_ai_webview():
         return
 
     # For editor, use the field dropdown to paste content from AI panel
-    field_name = target_object.ai_dock_field_combobox.currentText()
-    if not field_name:
-        showWarning("Please select a target field in the top bar.")
+    field_names = target_object.ai_dock_field_combobox.selectedItems()
+    print(f"DEBUG: selected field_names = {field_names}")
+    if not field_names:
+        showWarning("Please select one or more target fields from the dropdown.")
         return
 
-    target_object.ai_dock_webview.page().runJavaScript(GET_SELECTION_HTML_JS,
-        lambda html: on_text_pasted_from_ai(target_object, html, field_name))
+    def on_html_received(html):
+        print(f"DEBUG: html content from webview: {html}")
+        on_text_pasted_from_ai(target_object, html, field_names)
+
+    target_object.ai_dock_webview.page().runJavaScript(GET_SELECTION_HTML_JS, on_html_received)
 
 def on_copy_with_prompt_from_editor(prompt_template: str):
     """Copies selected text from the Anki editor or reviewer and injects it into the AI service."""

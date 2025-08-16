@@ -82,19 +82,9 @@ def on_editor_note_loaded(editor):
     if not hasattr(editor, 'ai_dock_field_combobox') or not editor.note:
         return
 
-    combobox = editor.ai_dock_field_combobox
-    last_field_name = get_config().get("target_field")
-
-    combobox.blockSignals(True)
-    combobox.clear()
+    field_selector = editor.ai_dock_field_combobox
     field_names = [f['name'] for f in editor.note.model()['flds']]
-    combobox.addItems(field_names)
-
-    if last_field_name in field_names:
-        combobox.setCurrentText(last_field_name)
-    elif field_names:
-        combobox.setCurrentIndex(0)
-    combobox.blockSignals(False)
+    field_selector.setItems(field_names)
 
 def on_editor_did_init(editor):
     """Injects the dock when an editor window is created."""

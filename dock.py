@@ -11,11 +11,15 @@ from aqt.qt import (
     QFileDialog,
     QHBoxLayout,
     QIcon,
+    QListWidget,
+    QListWidgetItem,
+    QMenu,
     QPushButton,
     QSizePolicy,
     QSplitter,
     QVBoxLayout,
     QWidget,
+    QWidgetAction,
 )
 from aqt.utils import showWarning, tooltip
 from PyQt6.QtCore import Qt, QTimer, QUrl
@@ -26,6 +30,46 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from .config import RATIO_OPTIONS, get_config, write_config
 from .logic import GET_SELECTION_HTML_JS, on_text_pasted_from_ai
 from .ui import PromptManagerDialog
+
+class CheckableComboBox(QPushButton):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setText("Fields: None")
+        self.list_widget = QListWidget()
+        self.list_widget.setAlternatingRowColors(True)
+        self.list_widget.itemChanged.connect(self.update_text)
+        
+        menu = QMenu(self)
+        action = QWidgetAction(menu)
+        action.setDefaultWidget(self.list_widget)
+        menu.addAction(action)
+        self.setMenu(menu)
+
+    def setItems(self, items):
+        self.list_widget.clear()
+        for item_text in items:
+            item = QListWidgetItem(item_text)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Unchecked)
+            self.list_widget.addItem(item)
+        self.update_text()
+
+    def selectedItems(self):
+        selected = []
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            if item.checkState() == Qt.CheckState.Checked:
+                selected.append(item.text())
+        return selected
+
+    def update_text(self):
+        selected = self.selectedItems()
+        if not selected:
+            self.setText("Fields")
+        elif len(selected) == 1:
+            self.setText(selected[0])
+        else:
+            self.setText(f"Fields: {len(selected)} selected")
 
 _persistent_ai_dock_profile = None
 
@@ -91,7 +135,7 @@ class CustomWebView(QWebEngineView):
             if not html:
                 tooltip("No content selected to paste.")
                 return
-            on_text_pasted_from_ai(self.target_object, html, field_name)
+            on_text_pasted_from_ai(self.target_object, html, [field_name])
 
         self.page().runJavaScript(GET_SELECTION_HTML_JS, paste_handler)
 
@@ -153,7 +197,7 @@ def inject_ai_dock(target_object):
 
     
 
-    field_name_combobox = QComboBox(controls_widget)
+    field_name_combobox = CheckableComboBox(controls_widget)
     field_name_combobox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
     if is_editor: controls_layout.addWidget(field_name_combobox)
     else: field_name_combobox.setVisible(False)
@@ -245,16 +289,11 @@ def inject_ai_dock(target_object):
 
     
 
-    def save_target_field_name_handler(field_text):
-        get_config()['target_field'] = field_text
-        write_config() # MODIFICA: Salvataggio immediato
+    
 
     # Connect signals
     site_combo_box.currentTextChanged.connect(on_ai_site_changed_handler)
     zoom_spinbox.valueChanged.connect(update_zoom_factor_handler)
     ratio_combobox.currentTextChanged.connect(update_ratio_handler)
-    
-    if is_editor:
-        field_name_combobox.currentTextChanged.connect(save_target_field_name_handler)
 
     QTimer.singleShot(300, lambda: update_ratio_handler(ratio_combobox.currentText()))
