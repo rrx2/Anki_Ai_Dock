@@ -2,18 +2,33 @@
 
 import os
 
+from typing import List
+
 from anki.cards import Card
 from aqt import gui_hooks, mw
 from aqt.addcards import AddCards
 from aqt.browser import Browser
+from aqt.editor import Editor
 from aqt.editcurrent import EditCurrent
 from aqt.qt import QAction, QIcon
 from PyQt6.QtCore import QTimer
 
 from .config import get_config, write_config
 from .dock import inject_ai_dock
-from .logic import _on_copy_text_received
+from .logic import _on_copy_text_received, toggle_ai_dock_visibility
 from .shortcuts import setup_shortcuts
+
+def add_toggle_dock_button(buttons: List[str], editor: Editor):
+    """Adds a button to the editor toolbar to toggle the AI Dock visibility."""
+    shortcut = get_config().get("toggle_dock_shortcut", "Ctrl+X")
+    button = editor.addButton(
+        None,
+        "ai-dock-toggle",
+        lambda checked=False: toggle_ai_dock_visibility(),
+        f"Toggle AI Dock visibility ({shortcut})",
+        label="💡",
+    )
+    buttons.append(button)
 
 
 def on_editor_context_menu(editor_webview, menu):
@@ -103,6 +118,7 @@ def on_profile_will_close():
 
 def register_hooks():
     """Registers all necessary hooks for the add-on."""
+    gui_hooks.editor_did_init_buttons.append(add_toggle_dock_button)
     print("DEBUG: register_hooks() called")
     
     gui_hooks.editor_did_init.append(on_editor_did_init)
