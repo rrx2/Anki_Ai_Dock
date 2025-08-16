@@ -151,10 +151,7 @@ def inject_ai_dock(target_object):
     ratio_combobox.setCurrentText(context_settings.get("splitRatio", "1:1"))
     controls_layout.addWidget(ratio_combobox)
 
-    location_combo = QComboBox(controls_widget)
-    location_combo.addItems(["right", "left", "above", "below"])
-    location_combo.setCurrentText(context_settings.get("location", "right"))
-    controls_layout.addWidget(location_combo)
+    
 
     field_name_combobox = QComboBox(controls_widget)
     field_name_combobox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -246,12 +243,7 @@ def inject_ai_dock(target_object):
         get_config()[settings_key]['zoom_factor'] = value
         write_config() # MODIFICA: Salvataggio immediato
 
-    def update_dock_location_handler(new_loc_str):
-        nonlocal current_location
-        current_location = new_loc_str
-        get_config()[settings_key]['location'] = new_loc_str
-        write_config() # MODIFICA: Salvataggio immediato
-        tooltip("Dock location will update when you reopen this window.", parent=parent_window)
+    
 
     def save_target_field_name_handler(field_text):
         get_config()['target_field'] = field_text
@@ -261,7 +253,7 @@ def inject_ai_dock(target_object):
     site_combo_box.currentTextChanged.connect(on_ai_site_changed_handler)
     zoom_spinbox.valueChanged.connect(update_zoom_factor_handler)
     ratio_combobox.currentTextChanged.connect(update_ratio_handler)
-    location_combo.currentTextChanged.connect(update_dock_location_handler)
+    
     if is_editor:
         field_name_combobox.currentTextChanged.connect(save_target_field_name_handler)
 

@@ -3,6 +3,7 @@
 import copy
 
 from aqt.qt import (
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -100,6 +101,7 @@ class PromptManagerDialog(QDialog):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._create_prompts_widget(), "Custom Prompts")
         self.tabs.addTab(self._create_ai_sites_widget(), "AI Services")
+        self.tabs.addTab(self._create_appearance_widget(), "Appearance")
         self.tabs.addTab(self._create_shortcuts_widget(), "Global Shortcuts")
         main_layout.addWidget(self.tabs)
         
@@ -119,6 +121,17 @@ class PromptManagerDialog(QDialog):
         layout.addRow("Send to AI without prompt:", self.send_direct_edit)
         self.toggle_dock_edit = QKeySequenceEdit(QKeySequence(config.get("toggle_dock_shortcut", "")))
         layout.addRow("Show/Hide Dock:", self.toggle_dock_edit)
+        return widget
+
+    def _create_appearance_widget(self):
+        widget = QWidget()
+        layout = QFormLayout(widget)
+        self.editor_location_combo = QComboBox()
+        self.editor_location_combo.addItems(["right", "left", "above", "below"])
+        layout.addRow("Editor Dock Location:", self.editor_location_combo)
+        self.reviewer_location_combo = QComboBox()
+        self.reviewer_location_combo.addItems(["right", "left", "above", "below"])
+        layout.addRow("Reviewer Dock Location:", self.reviewer_location_combo)
         return widget
 
     def _create_list_management_widget(self, double_click_handler, add_handler, edit_handler, remove_handler):
@@ -144,7 +157,7 @@ class PromptManagerDialog(QDialog):
             self.edit_ai_site, self.add_ai_site, self.edit_ai_site, self.remove_ai_site)
         return widget
 
-    def load_all(self): self.load_prompts(); self.load_ai_sites()
+    def load_all(self): self.load_prompts(); self.load_ai_sites(); self.load_appearance_settings()
 
     def load_prompts(self):
         self.prompt_list_widget.clear()
@@ -221,6 +234,13 @@ class PromptManagerDialog(QDialog):
                 live_config["last_choice"] = list(live_config["ai_sites"].keys())[0] if live_config["ai_sites"] else ""
             self.load_ai_sites()
 
+    def load_appearance_settings(self):
+        config = get_config()
+        editor_settings = config.get("editor_settings", {})
+        reviewer_settings = config.get("reviewer_settings", {})
+        self.editor_location_combo.setCurrentText(editor_settings.get("location", "right"))
+        self.reviewer_location_combo.setCurrentText(reviewer_settings.get("location", "right"))
+
     def on_accept(self):
         # Get the live config object
         config = get_config()
@@ -229,6 +249,9 @@ class PromptManagerDialog(QDialog):
         config['paste_direct_shortcut'] = self.paste_direct_edit.keySequence().toString(QKeySequence.SequenceFormat.PortableText)
         config['send_direct_shortcut'] = self.send_direct_edit.keySequence().toString(QKeySequence.SequenceFormat.PortableText)
         config['toggle_dock_shortcut'] = self.toggle_dock_edit.keySequence().toString(QKeySequence.SequenceFormat.PortableText)
+
+        config["editor_settings"]["location"] = self.editor_location_combo.currentText()
+        config["reviewer_settings"]["location"] = self.reviewer_location_combo.currentText()
         
         # Now, write the single, authoritative config object to disk
         write_config(config)

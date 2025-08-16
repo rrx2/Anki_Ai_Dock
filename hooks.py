@@ -34,7 +34,7 @@ def on_editor_context_menu(editor_webview, menu):
         prompt_action = QAction(action_text, ai_submenu)
         prompt_action.triggered.connect(
             lambda checked=False, tmpl=p_val['template'], txt=selected_text_in_editor, editor_obj=editor_webview.editor:
-            _on_copy_text_received(editor_obj, txt, tmpl)
+            _on_copy_text_received(editor_obj, txt, lambda text: tmpl.format(text=text))
         )
         ai_submenu.addAction(prompt_action)
 
@@ -56,7 +56,7 @@ def on_reviewer_context_menu(reviewer_webview, menu):
         prompt_action = QAction(action_text, ai_submenu)
         prompt_action.triggered.connect(
             lambda checked=False, tmpl=p_val['template'], txt=selected_text_in_reviewer, reviewer_obj=mw.reviewer:
-            _on_copy_text_received(reviewer_obj, txt, tmpl)
+            _on_copy_text_received(reviewer_obj, txt, lambda text: tmpl.format(text=text))
         )
         ai_submenu.addAction(prompt_action)
 
